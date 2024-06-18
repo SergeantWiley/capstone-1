@@ -1,0 +1,102 @@
+---
+title: "Capstone I"
+output: html_document
+date: "2024-06-09"
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+df <- read.csv("charts.csv", encoding = 'UTF-8')
+
+```
+
+
+
+```{r cars}
+sub_set <- df %>%
+  group_by(artist) %>%
+  summarise(song_count = n_distinct(title)) %>%
+  ungroup()
+
+top_artists <- sub_set %>%
+  arrange(desc(song_count)) %>%
+  head(40)
+
+ggplot(top_artists, aes(x = reorder(artist, -song_count), y = song_count)) +
+  geom_line(group = 1, color = 'blue') +
+  geom_point() +
+  labs(
+    x = 'Artist',
+    y = 'Number of Songs',
+    title = 'Total Number of Songs for Top 40 Artists'
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = 0.5)
+  ) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+```
+
+
+
+```{r}
+sub_set <- df %>%
+  select(title, artist, streams, date)
+
+# Group by 'artist' and sum 'streams'
+data <- sub_set %>%
+  group_by(artist) %>%
+  summarise(streams = sum(streams, na.rm = TRUE)) %>%
+  ungroup()
+
+# Get the earliest date for each artist
+date <- sub_set %>%
+  group_by(artist) %>%
+  summarise(date = min(as.Date(date))) %>%
+  ungroup()
+
+# Sort by the number of streams in descending order
+data <- data %>%
+  arrange(desc(streams))
+
+# Select the top 40 artists
+data <- data %>%
+  slice_head(n = 40)
+
+# Merge the date data into the main data frame
+data <- merge(data, date, by = "artist")
+
+# Calculate the current date
+current_date <- as.Date(Sys.Date())
+
+# Calculate the popularity rate
+data$popularity_rate <- as.numeric(difftime(current_date, data$date, units = "days"))
+data$popularity_rate <- data$popularity_rate / 7
+data$popularity_rate <- data$streams / data$popularity_rate
+
+# Convert streams to billions and popularity_rate to millions
+data$popularity_rate <- data$popularity_rate / 1e6
+data$streams <- data$streams / 1e9
+
+# Plot the data using a bar plot
+ggplot(data, aes(x = reorder(artist, -popularity_rate), y = popularity_rate)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(
+    x = 'Artist',
+    y = 'Avg Views per Week (In Millions)',
+    title = 'Popularity per Artist'
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = 0.5)
+  )
+```
+```{R}
+
